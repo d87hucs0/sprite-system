@@ -1,0 +1,6 @@
+.DS_Store
+Thumbs.db
+.vscode
+.claude
+.ruff_cache
+tmp
