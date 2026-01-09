@@ -3,4 +3,6 @@ Thumbs.db
 .vscode
 .claude
 .ruff_cache
+**/__pycache__/
 tmp
+*.pyc
