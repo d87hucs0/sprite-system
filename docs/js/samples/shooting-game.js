@@ -31,10 +31,10 @@ const POWERUP_LEVEL_MAX = 4;
 let powerUpLevel = 1;
 
 const BULLET_ANGLES = {
-  1: [0],                      // 正面のみ
-  2: [-10, 10],                // 2WAY
-  3: [-10, 0, 10],             // 3WAY
-  4: [-30, -10, 0, 10, 30]     // 5WAY
+  1: [0], // 正面のみ
+  2: [-10, 10], // 2WAY
+  3: [-10, 0, 10], // 3WAY
+  4: [-30, -10, 0, 10, 30] // 5WAY
 };
 
 // 特別敵
@@ -59,9 +59,9 @@ const enemies = []; // { x, y, vx, active, shootTimer, pattern, hasFiredAtPlayer
 let enemySpawnTimer = 0;
 
 // 敵パターン
-const ENEMY_PATTERN_A = 0; // 下方向移動、ランダム弾発射
+const ENEMY_PATTERN_A = 0; // 下方向移動、出現0.75秒後に弾発射
 const ENEMY_PATTERN_B = 1; // 下方向移動、X一致で弾発射＆横移動追加
-const ENEMY_PATTERN_C = 2; // 下方向移動、X一致で自機外し4WAY弾＆横移動追加
+const ENEMY_PATTERN_C = 2; // 下方向移動、出現0.75秒後に自機狙い弾 + X一致で4WAY弾＆横移動
 const ENEMY_PATTERN_D = 3; // 下方向移動、X一致で16方向弾＆横移動追加
 const ENEMY_PATTERN_E = 4; // 下方向移動、回転弾（自機狙い起点で16方向×2周）
 const ENEMY_PATTERN_F = 5; // 下方向移動、回転弾（16方向×1周）+ 0.5秒後に自機狙い＆加速
@@ -102,14 +102,14 @@ let invincibleTimer = 0; // 0より大きい間は無敵
 
 // 8方向オフセット（無敵時のブレ用）
 const SHAKE_DIRECTIONS = [
-  { dx: 0, dy: -1 },  // 上
-  { dx: 1, dy: -1 },  // 右上
-  { dx: 1, dy: 0 },   // 右
-  { dx: 1, dy: 1 },   // 右下
-  { dx: 0, dy: 1 },   // 下
-  { dx: -1, dy: 1 },  // 左下
-  { dx: -1, dy: 0 },  // 左
-  { dx: -1, dy: -1 }  // 左上
+  { dx: 0, dy: -1 }, // 上
+  { dx: 1, dy: -1 }, // 右上
+  { dx: 1, dy: 0 }, // 右
+  { dx: 1, dy: 1 }, // 右下
+  { dx: 0, dy: 1 }, // 下
+  { dx: -1, dy: 1 }, // 左下
+  { dx: -1, dy: 0 }, // 左
+  { dx: -1, dy: -1 } // 左上
 ];
 
 // 効果音チャンネル割り当て（sound0: 4チャネル共通）
@@ -222,7 +222,7 @@ const FONT = {
   V: [0b11000110, 0b11000110, 0b11000110, 0b11000110, 0b01101100, 0b00111000, 0b00010000, 0b00000000],
   I: [0b00111100, 0b00011000, 0b00011000, 0b00011000, 0b00011000, 0b00011000, 0b00111100, 0b00000000],
   N: [0b11000110, 0b11100110, 0b11110110, 0b11011110, 0b11001110, 0b11000110, 0b11000110, 0b00000000],
-  ' ': [0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000]
+  " ": [0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000]
 };
 
 // 自機パターン（三角形の戦闘機）
@@ -289,8 +289,19 @@ const SPRITE_DEBUG_START = 170; // 170〜172: deltaTime表示（3桁）
 
 // テキスト表示用パターンマップ
 const TEXT_PATTERN_MAP = {
-  S: PATTERN_S, H: PATTERN_H, O: PATTERN_O, T: PATTERN_T, E: PATTERN_E, R: PATTERN_R,
-  G: PATTERN_G, A: PATTERN_A, M: PATTERN_M, V: PATTERN_V, I: PATTERN_I, N: PATTERN_N, ' ': -1
+  S: PATTERN_S,
+  H: PATTERN_H,
+  O: PATTERN_O,
+  T: PATTERN_T,
+  E: PATTERN_E,
+  R: PATTERN_R,
+  G: PATTERN_G,
+  A: PATTERN_A,
+  M: PATTERN_M,
+  V: PATTERN_V,
+  I: PATTERN_I,
+  N: PATTERN_N,
+  " ": -1
 };
 
 /**
@@ -362,7 +373,21 @@ function startGame() {
   // 敵を初期化
   enemies.length = 0;
   for (let i = 0; i < MAX_ENEMIES; i++) {
-    enemies.push({ x: 0, y: 0, vx: 0, active: false, shootTimer: 0, pattern: ENEMY_PATTERN_A, hasFiredAtPlayer: false, spawnTimer: 0, hasInitialShot: false, bulletsFired: 0, baseAngle: 0, hp: 1, isSpecial: false });
+    enemies.push({
+      x: 0,
+      y: 0,
+      vx: 0,
+      active: false,
+      shootTimer: 0,
+      pattern: ENEMY_PATTERN_A,
+      hasFiredAtPlayer: false,
+      spawnTimer: 0,
+      hasInitialShot: false,
+      bulletsFired: 0,
+      baseAngle: 0,
+      hp: 1,
+      isSpecial: false
+    });
     ss.sprite0.disable(SPRITE_ENEMY_START + i);
   }
   enemySpawnTimer = 0;
@@ -715,11 +740,10 @@ function updateEnemies(deltaTime) {
         // 発射処理（画面内にいる場合のみ）
         if (enemy.y > 0) {
           if (enemy.pattern === ENEMY_PATTERN_A) {
-            // パターンA: ランダムタイマーで弾発射
-            enemy.shootTimer -= deltaTime;
-            if (enemy.shootTimer <= 0) {
+            // パターンA: 出現0.75秒後に弾発射（1回のみ）
+            if (!enemy.hasInitialShot && enemy.spawnTimer >= 0.75) {
               shootEnemyBullet(enemy);
-              enemy.shootTimer = ENEMY_SHOOT_INTERVAL;
+              enemy.hasInitialShot = true;
             }
           } else if (enemy.pattern === ENEMY_PATTERN_B) {
             // パターンB: 出現0.75秒後に弾発射 + X座標一致で弾発射＆横移動開始
@@ -737,9 +761,9 @@ function updateEnemies(deltaTime) {
               }
             }
           } else if (enemy.pattern === ENEMY_PATTERN_C) {
-            // パターンC: 出現0.75秒後に4WAY弾発射 + X座標一致で4WAY弾＆横移動開始
+            // パターンC: 出現0.75秒後に自機狙い弾発射 + X座標一致で4WAY弾＆横移動開始
             if (!enemy.hasInitialShot && enemy.spawnTimer >= 0.75) {
-              shootEnemyBullet4Way(enemy);
+              shootEnemyBullet(enemy);
               enemy.hasInitialShot = true;
             }
             if (!enemy.hasFiredAtPlayer) {
@@ -1024,17 +1048,17 @@ function updateEnemyBullets(deltaTime) {
 
       // 軌道変更処理（0.6秒で停止、0.9秒後に自機狙い＆速度2倍）
       if (!bullet.hasRedirected) {
-        if (bullet.timer >= 0.9) {
+        if (bullet.timer >= 0.7) {
           // 停止期間終了、自機狙いで再開
           const dx = player.x - bullet.x;
           const dy = player.y - bullet.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist > 0) {
-            bullet.vx = (dx / dist) * ENEMY_BULLET_SPEED * 2;
-            bullet.vy = (dy / dist) * ENEMY_BULLET_SPEED * 2;
+            bullet.vx = (dx / dist) * ENEMY_BULLET_SPEED * 1.5;
+            bullet.vy = (dy / dist) * ENEMY_BULLET_SPEED * 1.5;
           }
           bullet.hasRedirected = true;
-        } else if (bullet.timer >= 0.6) {
+        } else if (bullet.timer >= 0.5) {
           // 停止期間中
           bullet.vx = 0;
           bullet.vy = 0;
@@ -1127,7 +1151,8 @@ function checkPowerUpItemCollision() {
     const dy = item.y - player.y;
     const distSq = dx * dx + dy * dy;
 
-    if (distSq <= 64) { // 8px以内
+    if (distSq <= 64) {
+      // 8px以内
       item.active = false;
       ss.sprite0.disable(SPRITE_POWERUP_START + i);
 
@@ -1324,7 +1349,8 @@ function checkEnemyBulletPlayerCollision() {
     const dy = bullet.y - player.y;
     const distSq = dx * dx + dy * dy;
 
-    if (distSq <= 4) { // 2px以内
+    if (distSq <= 4) {
+      // 2px以内
       // 衝突：弾を消す
       playSfxPlayerHit();
       bullet.active = false;
@@ -1367,7 +1393,8 @@ function checkEnemyPlayerCollision() {
     const dy = enemy.y - player.y;
     const distSq = dx * dx + dy * dy;
 
-    if (distSq <= 49) { // 7px以内
+    if (distSq <= 49) {
+      // 7px以内
       // 衝突：敵を消す
       playSfxPlayerHit();
       playSfxExplosion();
